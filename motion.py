@@ -7,6 +7,7 @@ class Motor(object):
     def __init__(self):
         self.odrv0 = odrive.find_any()
         self.velocity = 0
+        self.ramprate = 0
 
     def configurate(self, calibrate=False):
         self.odrv0.clear_errors()
@@ -28,21 +29,49 @@ class Motor(object):
             print("CALIBRATION COMPLETE")
 
 
-    def closed_loop(self):
-        print("CLOSEING LOOP")
+    def pick_constants(self):
+        self.velocity = int(input("Velocity? "))
+        self.ramprate = int(input("Ramp Rate/Accel? "))
+
+
+    def keyboard_loop(self):
+        print("Velocity Loop, you control the direction - dont crash it")
+        self.pick_constants()
         self.odrv0.axis0.controller.config.input_mode = odrive.utils.InputMode.VEL_RAMP
         self.odrv0.axis0.controller.config.control_mode = odrive.utils.ControlMode.VELOCITY_CONTROL
         self.odrv0.axis0.requested_state = odrive.utils.AxisState.CLOSED_LOOP_CONTROL
-        self.odrv0.axis0.controller.config.vel_ramp_rate = 150  # MAX is 200
-        self.velocity = 40
+        self.odrv0.axis0.controller.config.vel_ramp_rate = self.ramprate
         self.odrv0.axis0.controller.input_vel = self.velocity
         while True:
-            cmd = input("CLICK TO SWITCH, STOP to STOP: ")
-            if cmd.lower() == "stop":
+            try:
+                cmd = input("CLICK TO SWITCH, STOP to STOP: ")
+                if cmd.lower() == "stop":
+                    self.stop()
+                else:
+                    self.velocity = -self.velocity
+                    self.odrv0.axis0.controller.input_vel = self.velocity
+            except KeyboardInterrupt:
                 self.stop()
-            else:
+
+
+    def auto_loop(self):
+        print("Velocity Loop, will automatically change direction")
+        self.pick_constants()
+        self.odrv0.axis0.controller.config.input_mode = odrive.utils.InputMode.VEL_RAMP
+        self.odrv0.axis0.controller.config.control_mode = odrive.utils.ControlMode.VELOCITY_CONTROL
+        self.odrv0.axis0.requested_state = odrive.utils.AxisState.CLOSED_LOOP_CONTROL
+        self.odrv0.axis0.controller.config.vel_ramp_rate = self.ramprate
+        self.odrv0.axis0.controller.input_vel = self.velocity
+        sleeptime = 3
+        while True:
+            try:
+                time.sleep(sleeptime)
                 self.velocity = -self.velocity
+                print(self.velocity)
                 self.odrv0.axis0.controller.input_vel = self.velocity
+                time.sleep(sleeptime)
+            except KeyboardInterrupt:
+                self.stop()
 
 
     def dump_errors(self):
@@ -55,13 +84,6 @@ class Motor(object):
 motor = Motor()
 motor.configurate(calibrate=False)
 #motor.dump_errors()
-#motor.torque_loop()
-motor.closed_loop()
+#motor.keyboard_loop()
+motor.auto_loop()
 #motor.stop()
-#print(motor.odrv0.axis0.controller.config.vel_ramp_rate)
-#print(motor.odrv0.axis0.controller.input_vel)
-#while True:
-#    motor.dump_errors()
-#print(type(motor.odrv0))
-#motor.closed_loop()
-
